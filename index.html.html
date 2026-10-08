@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Industrial Stock Manager - Step 1</title>
+<style>
+:root{
+  --bg:#f4f6f8; --card:#fff; --text:#17202a; --muted:#6b7280;
+  --primary:#1769aa; --primary-dark:#0f4f80; --border:#e5e7eb;
+  --green:#15803d; --red:#dc2626; --orange:#d97706;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+.app{min-height:100vh;display:flex}
+.sidebar{width:240px;background:#102a43;color:#fff;position:fixed;inset:0 auto 0 0;padding:22px 14px;z-index:10}
+.brand{padding:6px 10px 24px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:18px}
+.brand h1{font-size:19px;margin:0 0 5px}.brand p{margin:0;color:#b9c7d6;font-size:12px}
+.nav button{width:100%;border:0;background:transparent;color:#d9e3ec;text-align:left;padding:12px 13px;border-radius:8px;margin:3px 0;cursor:pointer}
+.nav button:hover,.nav button.active{background:#1769aa;color:#fff}
+.main{margin-left:240px;width:calc(100% - 240px);padding:25px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.topbar h2{margin:0;font-size:25px}.topbar span{color:var(--muted);font-size:13px}
+.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:22px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:19px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.metric-label{color:var(--muted);font-size:13px}.metric{font-size:29px;font-weight:700;margin-top:8px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.panel h3{margin:0 0 16px;font-size:17px}
+.form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+input,select{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;outline:none}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(23,105,170,.1)}
+.actions{margin-top:16px;display:flex;gap:10px}
+.btn{border:0;border-radius:8px;padding:11px 18px;cursor:pointer;font-weight:600}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#eef2f7;color:#263645}
+.btn-danger{background:#fee2e2;color:#991b1b}
+table{width:100%;border-collapse:collapse}
+th,td{padding:11px 10px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}
+th{background:#f8fafc;color:#4b5563;font-size:12px}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.badge.green{background:#dcfce7;color:#166534}.badge.red{background:#fee2e2;color:#991b1b}.badge.orange{background:#ffedd5;color:#9a3412}
+.stock-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stock-item{border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff}
+.stock-item .name{font-weight:700;font-size:14px}.stock-item .type{color:var(--muted);font-size:12px;margin-top:3px}
+.stock-item .qty{font-size:25px;font-weight:700;margin-top:10px}
+.stock-item .unit{font-size:11px;color:var(--muted)}
+.search{max-width:330px;margin-bottom:15px}
+.empty{text-align:center;color:var(--muted);padding:30px}
+.toast{position:fixed;right:22px;bottom:22px;background:#17202a;color:#fff;padding:13px 17px;border-radius:8px;display:none;z-index:30;font-size:13px}
+@media(max-width:1000px){.cards,.stock-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}}
+/* Professional iPhone bottom navigation */
+@media(max-width:700px){
+  body{
+    padding-bottom:calc(92px + env(safe-area-inset-bottom));
+    background:#f2f2f7;
+  }
+
+  .app{
+    min-height:100vh;
+    display:block;
+  }
+
+  .sidebar{
+    position:fixed;
+    left:10px;
+    right:10px;
+    bottom:calc(9px + env(safe-area-inset-bottom));
+    top:auto;
+    width:auto;
+    height:78px;
+    padding:7px 5px;
+    background:rgba(255,255,255,.88);
+    color:#111827;
+    border:1px solid rgba(0,0,0,.07);
+    border-radius:25px;
+    box-shadow:0 14px 38px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.08);
+    backdrop-filter:blur(24px) saturate(180%);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);
+    z-index:100;
+  }
+
+  .brand{display:none}
+
+  .nav{
+    width:100%;
+    height:100%;
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:2px;
+    align-items:stretch;
+  }
+
+  .nav button{
+    position:relative;
+    width:100%;
+    height:100%;
+    margin:0;
+    padding:4px 1px;
+    border:0;
+    border-radius:18px;
+    background:transparent;
+    color:#737782;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    text-align:center;
+    font-size:25px;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:color .22s ease,background .22s ease,transform .22s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .nav button span{
+    display:block;
+    font-size:9px;
+    line-height:11px;
+    font-weight:600;
+    letter-spacing:-.15px;
+    white-space:nowrap;
+    transition:transform .22s ease,font-weight .22s ease;
+  }
+
+  .nav button.active{
+    background:#e8f1ff;
+    color:#1769aa;
+    transform:translateY(-2px);
+    animation:tabPop .28s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .nav button.active span{
+    font-weight:700;
+    transform:translateY(-1px);
+  }
+
+  .nav button.active::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:3px;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:#1769aa;
+    transform:translateX(-50%);
+    animation:dotIn .25s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .nav button:active{
+    transform:scale(.91);
+  }
+
+  .nav button.active:active{
+    transform:translateY(-2px) scale(.94);
+  }
+
+  @keyframes tabPop{
+    0%{transform:translateY(0) scale(.94)}
+    65%{transform:translateY(-3px) scale(1.03)}
+    100%{transform:translateY(-2px) scale(1)}
+  }
+
+  @keyframes dotIn{
+    from{opacity:0;transform:translateX(-50%) scale(0)}
+    to{opacity:1;transform:translateX(-50%) scale(1)}
+  }
+
+  .main{
+    margin-left:0;
+    width:100%;
+    padding:16px;
+  }
+
+  .topbar{
+    align-items:flex-start;
+    margin-bottom:18px;
+  }
+
+  .topbar h2{
+    font-size:22px;
+    letter-spacing:-.4px;
+  }
+
+  .cards,.stock-grid,.form-grid{grid-template-columns:1fr}
+  table{min-width:650px}
+  .panel{overflow-x:auto;border-radius:16px}
+  .card{border-radius:16px}
+}
+
+@media(max-width:380px){
+  .sidebar{
+    left:7px;
+    right:7px;
+    height:75px;
+    border-radius:23px;
+  }
+
+  .nav button{
+    font-size:23px;
+  }
+
+  .nav button span{
+    font-size:8.5px;
+  }
+}
+
+/* Three-line menu toggle */
+.menu-toggle{
+  position:fixed;
+  top:18px;
+  left:18px;
+  width:48px;
+  height:48px;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:15px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 5px 18px rgba(0,0,0,.12);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  cursor:pointer;
+  z-index:120;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  transition:transform .22s ease,box-shadow .22s ease,background .22s ease;
+}
+.menu-toggle span{
+  display:block;
+  width:21px;
+  height:2.5px;
+  border-radius:5px;
+  background:#17202a;
+  transition:transform .25s ease,opacity .2s ease,width .25s ease;
+}
+.menu-toggle:hover{transform:scale(1.04);box-shadow:0 7px 22px rgba(0,0,0,.16)}
+.menu-toggle:active{transform:scale(.92)}
+
+.menu-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.25);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .25s ease,visibility .25s ease;
+  z-index:90;
+}
+
+.sidebar{
+  transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s ease;
+}
+
+body.menu-collapsed .sidebar{
+  transform:translateX(-100%);
+}
+
+body.menu-collapsed .menu-overlay{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+
+body:not(.menu-collapsed) .menu-toggle span:nth-child(1){
+  transform:translateY(7.5px) rotate(45deg);
+}
+body:not(.menu-collapsed) .menu-toggle span:nth-child(2){
+  opacity:0;
+  width:0;
+}
+body:not(.menu-collapsed) .menu-toggle span:nth-child(3){
+  transform:translateY(-7.5px) rotate(-45deg);
+}
+
+/* When the menu is hidden, give the main content the freed space */
+body.menu-collapsed .main{
+  margin-left:0;
+  width:100%;
+  transition:margin-left .3s ease,width .3s ease;
+}
+body:not(.menu-collapsed) .main{
+  transition:margin-left .3s ease,width .3s ease;
+}
+
+@media(max-width:700px){
+  .menu-toggle{
+    top:12px;
+    left:12px;
+    width:44px;
+    height:44px;
+    border-radius:14px;
+    z-index:130;
+  }
+
+  /* On iPhone the existing bottom menu remains available;
+     the hamburger controls the desktop-style left menu when present. */
+  .menu-toggle span{width:20px}
+  .menu-overlay{z-index:95}
+}
+
+@media(min-width:701px){
+  body:not(.menu-collapsed) .menu-overlay{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+}
+
+
+.backup-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin:18px 0;box-shadow:0 4px 16px rgba(0,0,0,.05)}
+.backup-title{font-size:18px;font-weight:700;color:#111827}
+.backup-subtitle{font-size:13px;color:#6b7280;margin:5px 0 14px}
+.backup-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.backup-btn{border:0;border-radius:12px;padding:12px 16px;background:#f1f5f9;color:#111827;font-size:14px;font-weight:700;cursor:pointer}
+.backup-btn.primary{background:#111827;color:#fff}
+.backup-btn:active{transform:scale(.98)}
+@media(max-width:600px){.backup-buttons{display:grid;grid-template-columns:1fr 1fr}.backup-btn{width:100%}}
+
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menuToggle" aria-label="Show or hide menu" aria-expanded="true">
+  <span></span><span></span><span></span>
+</button>
+<div class="menu-overlay" id="menuOverlay"></div>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><h1>Stock Manager</h1><p>Industrial Inventory • Step 1</p></div>
+  <nav class="nav">
+    <button class="active" data-page="dashboard">🏠 <span>Dashboard</span></button>
+    <button data-page="stock-in">📥 <span>Stock In</span></button>
+    <button data-page="add-items">➕ <span>Add Items</span></button>
+    <button data-page="stock-out">📤 <span>Stock Out</span></button>
+    <button data-page="current-stock">📦 <span>Current Stock</span></button>
+    <button data-page="history">📊 <span>Stock History</span></button>
+  </nav>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div><h2 id="pageTitle">Dashboard</h2><span>All quantities are recorded in Nos</span></div>
+  </div>
+
+  <section id="dashboard" class="page active">
+    <div class="cards">
+      <div class="card"><div class="metric-label">Product Variants</div><div class="metric" id="metricVariants">22</div></div>
+      <div class="card"><div class="metric-label">Total Stock In</div><div class="metric" id="metricIn">0</div></div>
+      <div class="card"><div class="metric-label">Total Stock Out</div><div class="metric" id="metricOut">0</div></div>
+      <div class="card"><div class="metric-label">Current Stock</div><div class="metric" id="metricBalance">0</div></div>
+    </div>
+    <div class="backup-card">
+      <div class="backup-title">Data Backup</div>
+      <div class="backup-subtitle">Save your stock data as a file or restore it later.</div>
+      <div class="backup-buttons">
+        <button class="backup-btn primary" onclick="backupData()">⬇️ Backup Data</button>
+        <button class="backup-btn" onclick="document.getElementById('restoreFile').click()">⬆️ Restore Data</button>
+      </div>
+      <input id="restoreFile" type="file" accept=".json,application/json" style="display:none" onchange="restoreData(event)">
+    </div>
+
+    <div class="panel">
+      <h3>Current Stock Summary</h3>
+      <div id="dashboardStock" class="stock-grid"></div>
+    </div>
+  </section>
+
+  <section id="stock-in" class="page">
+    <div class="panel">
+      <h3>📥 Add Stock In</h3>
+      <form id="inForm">
+        <div class="form-grid">
+          <div><label>Date</label><input type="date" id="inDate" required></div>
+          <div><label>Size</label><select id="inSize" required></select></div>
+          <div><label>Type</label><select id="inType" required></select></div>
+          <div><label>Quantity</label><input type="number" id="inQty" min="1" step="1" placeholder="Enter quantity" required></div>
+        </div>
+        <div class="actions"><button class="btn btn-primary" type="submit">Save Stock In</button><button class="btn btn-secondary" type="reset">Clear</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="add-items" class="page">
+    <div class="panel">
+      <h3>➕ Add Items</h3>
+      <p style="color:#6b7280;font-size:13px;margin-top:-8px">Add a new size and its available type. The existing standard items are already included.</p>
+      <form id="itemForm">
+        <div class="form-grid">
+          <div><label>Size</label><input id="newSize" placeholder="Example: 20 cm" required></div>
+          <div><label>Type</label><select id="newType" required><option value="">Select type</option><option>Electric</option><option>Crackling</option><option>Green</option><option>Red</option></select></div>
+        </div>
+        <div class="actions"><button class="btn btn-primary" type="submit">Add Item</button><button class="btn btn-secondary" type="reset">Clear</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <h3>Item List</h3>
+      <div id="itemListWrap"></div>
+    </div>
+  </section>
+
+  <section id="stock-out" class="page">
+    <div class="panel">
+      <h3>📤 Add Stock Out</h3>
+      <form id="outForm">
+        <div class="form-grid">
+          <div><label>Date</label><input type="date" id="outDate" required></div>
+          <div><label>Size</label><select id="outSize" required></select></div>
+          <div><label>Type</label><select id="outType" required></select></div>
+          <div><label>Quantity</label><input type="number" id="outQty" min="1" step="1" placeholder="Enter quantity" required></div>
+        </div>
+        <div class="actions"><button class="btn btn-primary" type="submit">Save Stock Out</button><button class="btn btn-secondary" type="reset">Clear</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="current-stock" class="page">
+    <div class="panel">
+      <h3>📦 Current Stock</h3>
+      <input class="search" id="stockSearch" placeholder="Search size or type...">
+      <div id="stockTableWrap"></div>
+    </div>
+  </section>
+
+  <section id="history" class="page">
+    <div class="panel">
+      <h3>📊 Stock Movement History</h3>
+      <button class="btn btn-danger" id="clearHistory">Clear All History</button>
+      <div id="historyWrap" style="margin-top:15px;overflow:auto"></div>
+    </div>
+  </section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_PRODUCTS = {
+  "7 cm":["Electric","Crackling","Green","Red"],
+  "10 cm":["Electric","Crackling","Green","Red"],
+  "12 cm":["Electric","Crackling","Green","Red"],
+  "15 cm":["Electric","Electric UV","Crackling","Crackling UV","Green","Green UV","Red","Red UV"],
+  "30 cm":["Electric","Electric UV","Crackling","Crackling UV","Green","Green UV","Red","Red UV"],
+  "50 cm":["Electric","Electric UV","Crackling","Crackling UV"],
+  "Rotating":["Special"]
+};
+const PRODUCT_KEY="industrial_stock_manager_products";
+const KEY="industrial_stock_manager_step1";
+let PRODUCTS=JSON.parse(localStorage.getItem(PRODUCT_KEY)||"null")||JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+let movements=JSON.parse(localStorage.getItem(KEY)||"[]");
+
+const $=id=>document.getElementById(id);
+const today=new Date().toISOString().slice(0,10);
+$("inDate").value=today; $("outDate").value=today;
+
+function allProducts(){
+  return Object.entries(PRODUCTS).flatMap(([size,types])=>types.map(type=>({size,type,key:size+"|"+type})));
+}
+function fillSize(selectId){
+  const s=$(selectId); s.innerHTML='<option value="">Select size</option>'+Object.keys(PRODUCTS).map(x=>`<option>${x}</option>`).join("");
+}
+function fillTypes(sizeId,typeId){
+  const size=$(sizeId).value, t=$(typeId);
+  t.innerHTML='<option value="">Select type</option>';
+  (PRODUCTS[size]||[]).forEach(x=>t.insertAdjacentHTML("beforeend",`<option>${x}</option>`));
+}
+fillSize("inSize"); fillSize("outSize");
+$("inSize").addEventListener("change",()=>fillTypes("inSize","inType"));
+$("outSize").addEventListener("change",()=>fillTypes("outSize","outType"));
+
+function balances(){
+  const b={};
+  allProducts().forEach(p=>b[p.key]={...p,in:0,out:0,balance:0});
+  movements.forEach(m=>{
+    if(!b[m.key]) return;
+    b[m.key][m.direction]+=m.qty;
+    b[m.key].balance=b[m.key].in-b[m.key].out;
+  });
+  return Object.values(b);
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(movements)); renderAll();}
+function saveProducts(){localStorage.setItem(PRODUCT_KEY,JSON.stringify(PRODUCTS)); fillSize("inSize"); fillSize("outSize"); renderAll();}
+function toast(msg){
+  $("toast").textContent=msg;$("toast").style.display="block";
+  clearTimeout(window._toast);window._toast=setTimeout(()=>$("toast").style.display="none",2500);
+}
+function addMovement(direction,date,size,type,qty){
+  movements.push({id:Date.now()+Math.random(),direction,date,size,type,key:size+"|"+type,qty});
+  save(); toast(direction==="in"?"Stock In saved successfully.":"Stock Out saved successfully.");
+}
+
+$("inForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  addMovement("in",$("inDate").value,$("inSize").value,$("inType").value,Number($("inQty").value));
+  e.target.reset();$("inDate").value=today;
+});
+$("outForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const size=$("outSize").value,type=$("outType").value,qty=Number($("outQty").value);
+  const item=balances().find(x=>x.key===size+"|"+type);
+  if(!item){toast("Please select a valid item.");return}
+  if(qty>item.balance){toast(`Insufficient stock. Available: ${item.balance} Nos.`);return}
+  addMovement("out",$("outDate").value,size,type,qty);
+  e.target.reset();$("outDate").value=today;
+});
+
+function stockCards(list,container){
+  container.innerHTML=list.map(x=>`
+    <div class="stock-item">
+      <div class="name">${x.size}</div><div class="type">${x.type}</div>
+      <div class="qty">${x.balance}</div><div class="unit">Nos</div>
+    </div>`).join("");
+}
+function renderItems(){
+  const rows=Object.entries(PRODUCTS).flatMap(([size,types])=>types.map(type=>`<tr><td>${size}</td><td>${type}</td></tr>`));
+  $("itemListWrap").innerHTML=`<table><thead><tr><th>Size</th><th>Type</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+
+$("itemForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const size=$("newSize").value.trim(); const type=$("newType").value;
+  if(!size||!type)return;
+  if(!PRODUCTS[size]) PRODUCTS[size]=[];
+  if(PRODUCTS[size].includes(type)){toast("This item already exists.");return;}
+  PRODUCTS[size].push(type); saveProducts(); e.target.reset(); toast("Item added successfully.");
+});
+
+function renderDashboard(){
+  const b=balances();
+  const totalIn=movements.filter(x=>x.direction==="in").reduce((a,x)=>a+x.qty,0);
+  const totalOut=movements.filter(x=>x.direction==="out").reduce((a,x)=>a+x.qty,0);
+  $("metricVariants").textContent=b.length;
+  $("metricIn").textContent=totalIn;
+  $("metricOut").textContent=totalOut;
+  $("metricBalance").textContent=totalIn-totalOut;
+  stockCards(b,$("dashboardStock"));
+}
+function renderStockTable(){
+  const q=$("stockSearch").value.toLowerCase();
+  const b=balances().filter(x=>(x.size+" "+x.type).toLowerCase().includes(q));
+  $("stockTableWrap").innerHTML=`<table><thead><tr><th>Size</th><th>Type</th><th>Stock In</th><th>Stock Out</th><th>Balance</th><th>Status</th></tr></thead><tbody>${
+    b.map(x=>`<tr><td>${x.size}</td><td>${x.type}</td><td>${x.in}</td><td>${x.out}</td><td><strong>${x.balance}</strong></td><td><span class="badge ${x.balance>0?"green":"red"}">${x.balance>0?"In Stock":"Out of Stock"}</span></td></tr>`).join("")
+  }</tbody></table>`;
+}
+function renderHistory(){
+  const rows=[...movements].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
+  $("historyWrap").innerHTML=rows.length?`<table><thead><tr><th>Date</th><th>Movement</th><th>Size</th><th>Type</th><th>Quantity</th></tr></thead><tbody>${
+    rows.map(x=>`<tr><td>${x.date}</td><td><span class="badge ${x.direction==="in"?"green":"orange"}">${x.direction==="in"?"STOCK IN":"STOCK OUT"}</span></td><td>${x.size}</td><td>${x.type}</td><td><strong>${x.qty}</strong></td></tr>`).join("")
+  }</tbody></table>`:`<div class="empty">No stock movements recorded yet.</div>`;
+}
+function renderAll(){renderDashboard();renderStockTable();renderHistory();renderItems()}
+$("stockSearch").addEventListener("input",renderStockTable);
+$("clearHistory").addEventListener("click",()=>{
+  if(confirm("Delete all stock movement history? This will reset all balances.")){movements=[];save();toast("All history cleared.");}
+});
+
+document.querySelectorAll(".nav button").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+  const page=btn.dataset.page;
+  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+  $(page).classList.add("active");
+  $("pageTitle").textContent=btn.querySelector("span").textContent;
+  renderAll();
+}));
+
+// Hamburger menu: show/hide the left navigation.
+const menuToggle = document.getElementById("menuToggle");
+const menuOverlay = document.getElementById("menuOverlay");
+
+function setMenu(open){
+  document.body.classList.toggle("menu-collapsed", !open);
+  menuToggle.setAttribute("aria-expanded", String(open));
+  menuToggle.setAttribute("aria-label", open ? "Hide menu" : "Show menu");
+}
+
+menuToggle.addEventListener("click", () => {
+  setMenu(document.body.classList.contains("menu-collapsed"));
+});
+
+menuOverlay.addEventListener("click", () => setMenu(false));
+
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape") setMenu(false);
+});
+
+renderAll();
+
+function backupData(){
+  try{
+    const backup={app:"Industrial Stock Manager",version:1,exportedAt:new Date().toISOString(),products:PRODUCTS,movements:movements};
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    const d=new Date();
+    const stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+"_"+String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0");
+    a.href=url;a.download="stock_backup_"+stamp+".json";
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    alert("Backup created successfully.");
+  }catch(e){alert("Backup failed: "+e.message);}
+}
+
+function restoreData(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data||data.app!=="Industrial Stock Manager") throw new Error("This is not a valid Stock Manager backup file.");
+      if(!confirm("Restore this backup? Your current stock data will be replaced.")){event.target.value="";return;}
+      if(data.products&&typeof data.products==="object"){
+        PRODUCTS=data.products;
+        localStorage.setItem(PRODUCT_KEY,JSON.stringify(PRODUCTS));
+      }
+      if(Array.isArray(data.movements)){
+        movements=data.movements;
+        localStorage.setItem(KEY,JSON.stringify(movements));
+      }
+      alert("Backup restored successfully. The app will now reload.");
+      location.reload();
+    }catch(err){alert("Restore failed: "+err.message);}
+    finally{event.target.value="";}
+  };
+  reader.onerror=function(){alert("Could not read the backup file.");event.target.value="";};
+  reader.readAsText(file);
+}
+
+</script>
+</body>
+</html>
